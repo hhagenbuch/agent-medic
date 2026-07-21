@@ -146,6 +146,11 @@ Reconcile flow:
    the incident case, and create a `PromptVersion` (strategy
    `EvalGatedCanary`) pointing its gate at the candidate dataset. The
    operator's canary machinery does the rest — medic does not reimplement it.
+   Note: `evalGate.datasetConfigMap` currently lives on `Agent.spec`, so
+   this requires a per-PromptVersion `evalGateOverride` — the second of the
+   two operator extensions (§3.5). Medic patching `Agent.spec.evalGate`
+   instead is rejected: it walks into the spec-ownership footgun the
+   operator's own design calls out, and races with humans editing the Agent.
 3. The gate must clear **two bars**: the operator's aggregate
    `minPassRate`, **and** the incident case itself must pass. An aggregate
    0.9 can be met while the one case that started all this still fails —
@@ -161,6 +166,14 @@ Reconcile flow:
    antibody rule: cases merge on promotion and are never deleted or
    weakened. A future fix that regresses this case is rejected by
    construction, because the gate always runs the whole suite.
+
+   Ownership: the permanent suite ConfigMap is **medic-owned** (labeled
+   `medic.hhagenbuch.io/managed: "true"`) so the antibody merge is not
+   silent GitOps drift. Humans keep adding cases via git as usual; a merge
+   step folds the git-sourced cases and the accumulated antibodies into the
+   ConfigMap deterministically (antibodies win on id collision — never
+   weakened). Write-back of antibodies to git as an automated PR is
+   roadmap, not MVP.
 6. **Fail → RolledBack** — the canary is torn down (operator behavior),
    the failing report lands in MedicProposal status, and the Surgeon gets
    one more attempt with the failure report added to the incident bundle.
@@ -185,10 +198,12 @@ control belongs at the enforcement point, not in the component that asks
 politely. (b) leaves a window where anyone (or any bug) that can create a
 `PromptVersion` ships an unapproved prompt — the hold would be a convention,
 and this design rejects authority-by-convention on principle (§3.3). The cost
-is a small, separately-reviewed feature PR to agent-operator
-(`requireApproval` + `AwaitingApproval` + release-annotation check), which is
-honest sequencing: the operator grows a generic, medic-agnostic feature that
-any human-in-the-loop workflow can use.
+is a small, separately-reviewed feature PR to agent-operator carrying **two
+generic, medic-agnostic extensions**: (1) `requireApproval` + an
+`AwaitingApproval` phase + a release-annotation check, and (2) a
+per-PromptVersion `evalGateOverride` (needed for the candidate dataset,
+§3.4.2). Honest sequencing: the operator grows features any
+human-in-the-loop workflow can use; medic stays a consumer.
 
 ### 3.6 No auto-approve mode. Ever. (the third authority decision)
 
