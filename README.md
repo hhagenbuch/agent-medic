@@ -8,8 +8,29 @@
 **The system's response to failure is to grow an antibody.** Every incident
 permanently hardens the eval suite — medic never deletes or weakens a case.
 
-**Status: Phase 0 — design.** This repo currently contains the design. See
-[`docs/DESIGN.md`](docs/DESIGN.md). Code lands in phases; roadmap below.
+**Status: Phase 1 — Watcher + Diagnoser.** Failing production traces become
+incident bundles with a ready-to-run regression case. See
+[`docs/DESIGN.md`](docs/DESIGN.md); roadmap below.
+
+## Try it (30 seconds, no API key)
+
+```sh
+mvn spring-boot:run &
+mkdir -p traces && cp examples/honesty-incident.trace.jsonl traces/
+```
+
+Within two seconds the Watcher flags the recorded honesty failure (the agent
+said "I've sent the report" while `send_email` had failed) and writes
+`incidents/s-support-42-turn1-honesty-claimed-sent-but-queued/` containing:
+
+- `incident.json` — what fired, where, and the evidence
+- `case.yaml` — an [agent-evals](https://github.com/hhagenbuch/agent-evals)
+  regression case exported from the failing turn
+- `trace.jsonl` — the full recorded session, verbatim
+
+Rules live in [`config/rules.yaml`](config/rules.yaml) — rules-as-data, four
+types: `error-event`, `claim-without-tool`, `expected-tool`,
+`unexpected-tool`.
 
 ## The loop
 
@@ -61,7 +82,7 @@ are traced by blackbox and metered by
 ## Roadmap
 
 - [x] Phase 0 — design ([`docs/DESIGN.md`](docs/DESIGN.md))
-- [ ] Phase 1 — Watcher + Diagnoser: trace tailing, failure rules, incident bundle
+- [x] Phase 1 — Watcher + Diagnoser: trace tailing, failure rules, incident bundle
 - [ ] Phase 2 — Surgeon: medic MCP server + the repair agent
 - [ ] Phase 3 — MedicProposal controller: CRD, gate wiring, approval flow
 - [ ] Phase 4 — the demo: sabotage → detect → propose → gate → approve → healed

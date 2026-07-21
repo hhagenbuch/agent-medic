@@ -1,0 +1,23 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Build and test
+        run: mvn -B verify
+      - name: Clean-room grep
+        run: |
+          if grep -riE 'rccl|royal caribbean|rcg-digital' --exclude-dir=target --exclude-dir=.git --exclude-dir=.github .; then
+            echo "::error::employer reference found — this repo is clean-room"
+            exit 1
+          fi

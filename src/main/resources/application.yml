@@ -1,0 +1,5 @@
+medic:
+  watch-dir: ./traces
+  bundle-dir: ./incidents
+  rules-file: ./config/rules.yaml
+  poll-millis: 2000
