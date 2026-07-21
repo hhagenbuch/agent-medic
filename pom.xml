@@ -20,6 +20,7 @@
     <properties>
         <java.version>25</java.version>
         <blackbox.version>v0.2.1</blackbox.version>
+        <starter.version>v0.3.0</starter.version>
     </properties>
 
     <repositories>
@@ -40,6 +41,18 @@
             <groupId>com.github.hhagenbuch.agent-blackbox</groupId>
             <artifactId>blackbox-core</artifactId>
             <version>${blackbox.version}</version>
+        </dependency>
+        <!-- The Surgeon runs on the starter's AgentLoop, tools mounted via its MCP client. -->
+        <dependency>
+            <groupId>com.github.hhagenbuch</groupId>
+            <artifactId>spring-ai-agent-starter</artifactId>
+            <version>${starter.version}</version>
+        </dependency>
+        <!-- Unified diff of current vs proposed prompt, for the human reviewer. -->
+        <dependency>
+            <groupId>io.github.java-diff-utils</groupId>
+            <artifactId>java-diff-utils</artifactId>
+            <version>4.16</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
