@@ -17,7 +17,7 @@ jobs:
         run: mvn -B verify
       - name: Clean-room grep
         run: |
-          if grep -riE 'rccl|royal caribbean|rcg-digital' --exclude-dir=target .; then
+          if grep -riE 'rccl|royal caribbean|rcg-digital' --exclude-dir=target --exclude-dir=.git --exclude-dir=.github .; then
             echo "::error::employer reference found — this repo is clean-room"
             exit 1
           fi
