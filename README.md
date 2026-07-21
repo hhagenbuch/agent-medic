@@ -8,9 +8,11 @@
 **The system's response to failure is to grow an antibody.** Every incident
 permanently hardens the eval suite — medic never deletes or weakens a case.
 
-**Status: Phase 1 — Watcher + Diagnoser.** Failing production traces become
-incident bundles with a ready-to-run regression case. See
-[`docs/DESIGN.md`](docs/DESIGN.md); roadmap below.
+**Status: Phase 2 — Surgeon.** Failing production traces become incident
+bundles (Watcher + Diagnoser), and the Surgeon — a repair agent running on
+[spring-ai-agent-starter](https://github.com/hhagenbuch/spring-ai-agent-starter)'s
+`AgentLoop` — reads the evidence through a read-only MCP server and proposes a
+validated prompt repair. See [`docs/DESIGN.md`](docs/DESIGN.md); roadmap below.
 
 ## Try it (30 seconds, no API key)
 
@@ -83,7 +85,7 @@ are traced by blackbox and metered by
 
 - [x] Phase 0 — design ([`docs/DESIGN.md`](docs/DESIGN.md))
 - [x] Phase 1 — Watcher + Diagnoser: trace tailing, failure rules, incident bundle
-- [ ] Phase 2 — Surgeon: medic MCP server + the repair agent
+- [x] Phase 2 — Surgeon: medic MCP server + the repair agent
 - [ ] Phase 3 — MedicProposal controller: CRD, gate wiring, approval flow
 - [ ] Phase 4 — the demo: sabotage → detect → propose → gate → approve → healed
 - [ ] Phase 5 — `docs/STANDARDS.md`: the agent-engineering standards this
