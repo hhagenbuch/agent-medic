@@ -15,9 +15,18 @@ jobs:
           cache: maven
       - name: Build and test
         run: mvn -B verify
+      # The pattern itself lives in a repo secret: a clean-room check that
+      # publishes the very strings it exists to conceal is not a clean-room
+      # check. Unset (e.g. on forks) → warn and skip, never fail.
       - name: Clean-room grep
+        env:
+          FORBIDDEN_PATTERN: ${{ secrets.FORBIDDEN_PATTERN }}
         run: |
-          if grep -riE 'rccl|royal caribbean|rcg-digital' --exclude-dir=target --exclude-dir=.git --exclude-dir=.github .; then
-            echo "::error::employer reference found — this repo is clean-room"
+          if [ -z "$FORBIDDEN_PATTERN" ]; then
+            echo "::warning::FORBIDDEN_PATTERN secret not set - clean-room grep skipped"
+            exit 0
+          fi
+          if grep -riE "$FORBIDDEN_PATTERN" --exclude-dir=target --exclude-dir=.git .; then
+            echo "::error::forbidden reference found - this repo is clean-room"
             exit 1
           fi
