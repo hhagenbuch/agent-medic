@@ -97,6 +97,10 @@ The medic is subject to the same observability as its patients: its own runs
 are traced by blackbox and metered by
 [agent-meter](https://github.com/hhagenbuch/agent-meter).
 
+These boundaries are instances of the platform's
+[agent engineering standards](docs/STANDARDS.md), which live in this repo on
+purpose: medic programmatically edits prompts, so the rules bind it hardest.
+
 ## Roadmap
 
 - [x] Phase 0 — design ([`docs/DESIGN.md`](docs/DESIGN.md))
@@ -104,8 +108,8 @@ are traced by blackbox and metered by
 - [x] Phase 2 — Surgeon: medic MCP server + the repair agent
 - [x] Phase 3 — MedicProposal controller: CRD, gate wiring, approval flow
 - [ ] Phase 4 — the demo: sabotage → detect → propose → gate → approve → healed
-- [ ] Phase 5 — `docs/STANDARDS.md`: the agent-engineering standards this
-      portfolio builds by
+- [x] Phase 5 — [`docs/STANDARDS.md`](docs/STANDARDS.md): the agent-engineering
+      standards this portfolio builds by
 
 ## License
 
