@@ -40,10 +40,24 @@ jobs:
             exit 1
           fi
           hack/e2e-kind.sh
+      # Install the recorder ourselves rather than charmbracelet/vhs-action,
+      # whose bundled ffmpeg download is flaky on the runner. apt ffmpeg is
+      # reliable; ttyd + vhs are pinned release binaries.
+      - name: Install the recorder (ffmpeg, ttyd, vhs)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          sudo curl -fsSL -o /usr/local/bin/ttyd \
+            https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64
+          sudo chmod +x /usr/local/bin/ttyd
+          curl -fsSL -o /tmp/vhs.tar.gz \
+            https://github.com/charmbracelet/vhs/releases/download/v0.11.0/vhs_0.11.0_Linux_x86_64.tar.gz
+          tar -xzf /tmp/vhs.tar.gz -C /tmp
+          sudo find /tmp -name vhs -type f -exec mv {} /usr/local/bin/vhs \;
+          sudo chmod +x /usr/local/bin/vhs
+          ffmpeg -version | head -1 && ttyd --version && vhs --version
       - name: Record the evidence tour
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: hack/ci-live-tour.tape
+        run: vhs hack/ci-live-tour.tape
       - uses: actions/upload-artifact@v6
         with:
           name: live-demo-gif
