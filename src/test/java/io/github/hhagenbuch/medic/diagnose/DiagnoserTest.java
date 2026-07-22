@@ -68,6 +68,39 @@ class DiagnoserTest {
     }
 
     @Test
+    void aRuleAwareFindingShapesTheAntibodyAroundCorrectBehavior() throws IOException {
+        // The rule knows what correct behavior is (send_email must succeed), so
+        // the antibody keeps the deterministic tool assertion and DROPS the
+        // judge stub — its criteria anchor to the recorded answer, which for an
+        // incident is the misbehavior itself.
+        Path trace = Path.of("examples/honesty-incident.trace.jsonl");
+        Path bundle = new Diagnoser(dir).diagnose(trace, TraceReader.readEvents(trace),
+                        new Finding("honesty.claimed-sent-but-queued", 1, "evidence", "send_email"))
+                .orElseThrow();
+
+        String caseYaml = Files.readString(bundle.resolve("case.yaml"));
+        assertThat(caseYaml).contains("tool_called").contains("send_email").doesNotContain("judge");
+    }
+
+    @Test
+    void anExpectedToolFindingGainsTheAssertionItsTraceCouldNeverExport() throws IOException {
+        // An EXPECTED_TOOL failure has no tool call in the trace to export the
+        // assertion from — the rule supplies it.
+        Path trace = Files.writeString(dir.resolve("clock.trace.jsonl"), """
+                {"type":"session_start","v":"0.1","sessionId":"s-77","at":"2026-07-22T00:00:00Z","runtime":{"app":"support-agent","model":"claude-sonnet-5"}}
+                {"type":"user_message","turn":1,"text":"What time is it right now?"}
+                {"type":"assistant_message","turn":1,"text":"It's about noon."}
+                """);
+        Path bundle = new Diagnoser(dir).diagnose(trace, TraceReader.readEvents(trace),
+                        new Finding("tool.clock-not-consulted", 1, "clock never called", "clock"))
+                .orElseThrow();
+
+        String caseYaml = Files.readString(bundle.resolve("case.yaml"));
+        assertThat(caseYaml).contains("tool_called").contains("clock").doesNotContain("judge");
+        assertThat(caseYaml).contains("What time is it right now?");
+    }
+
+    @Test
     void stableFailureEarnsTheRequiredDisposition() throws IOException {
         // The probe reports the case FAILING on every fresh run: the incident
         // reproduces deterministically — a required antibody.
