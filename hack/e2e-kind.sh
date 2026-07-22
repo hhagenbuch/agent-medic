@@ -13,6 +13,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 : "${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY — the Surgeon and judge run for real in this e2e}"
+# Secrets pasted into stores routinely pick up a trailing newline, which is a
+# prohibited character in an HTTP header — strip it here so every consumer
+# (medic env, k8s secret) gets a clean value.
+ANTHROPIC_API_KEY=$(printf '%s' "$ANTHROPIC_API_KEY" | tr -d '\r\n')
 
 CLUSTER=${CLUSTER:-agent-medic-e2e}
 NS=agents

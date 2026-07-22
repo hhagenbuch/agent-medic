@@ -55,8 +55,10 @@ public class KubernetesConfig {
             return (messages, tools) -> Mono.error(new IllegalStateException(
                     "no Surgeon LLM configured (medic.surgeon.api-key)"));
         }
+        // strip(): a key that arrives with a trailing newline (a classic secret-
+        // store paste artifact) is a prohibited character in the x-api-key header.
         AgentProperties agentProps = new AgentProperties(
-                props.surgeon().apiKey(), props.surgeon().model(), 4096, 6, 3, List.of());
+                props.surgeon().apiKey().strip(), props.surgeon().model(), 4096, 6, 3, List.of());
         WebClient webClient = WebClient.builder()
                 .baseUrl("https://api.anthropic.com")
                 .defaultHeader("x-api-key", agentProps.apiKey())
