@@ -30,7 +30,7 @@ public final class MedicResources {
      * enforces {@code required} cases (≥ 0.2.0); medic pins it via the override
      * rather than trusting whatever default the Agent or operator carries.
      */
-    public static final String EVALS_IMAGE = "ghcr.io/hhagenbuch/agent-evals:0.2.0";
+    public static final String EVALS_IMAGE = "ghcr.io/hhagenbuch/agent-evals:0.2.1";
     private static final String DATASET_KEY = "dataset.yaml";
 
     private MedicResources() {

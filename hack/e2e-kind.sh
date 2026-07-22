@@ -38,6 +38,11 @@ mvn -q -DskipTests package
     -Dspring-boot.build-image.imageName="$STARTER_IMAGE" )
 kind load docker-image "$STARTER_IMAGE" --name "$CLUSTER"
 
+echo "==> preload the eval-gate image (medic pins agent-evals:0.2.1)"
+EVALS_IMAGE=ghcr.io/hhagenbuch/agent-evals:0.2.1
+docker pull "$EVALS_IMAGE"
+kind load docker-image "$EVALS_IMAGE" --name "$CLUSTER"
+
 echo "==> install CRDs (operator's, incl. requireApproval/evalGateOverride, + medic's)"
 kubectl apply -f "$OPERATOR_DIR/deploy/crds/"
 kubectl apply -f deploy/crds/medicproposal-crd.yaml
