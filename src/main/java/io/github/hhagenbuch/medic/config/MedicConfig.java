@@ -20,8 +20,11 @@ public class MedicConfig {
     }
 
     @Bean
-    Diagnoser diagnoser(MedicProperties props) {
-        return new Diagnoser(props.bundleDir());
+    Diagnoser diagnoser(MedicProperties props,
+                        ObjectProvider<io.github.hhagenbuch.medic.diagnose.CaseProbe> probe) {
+        // With a probe (controller mode) the Diagnoser runs the flakiness check;
+        // file-only mode has nothing live to probe and keeps required semantics.
+        return new Diagnoser(props.bundleDir(), probe.getIfAvailable());
     }
 
     @Bean

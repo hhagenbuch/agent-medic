@@ -80,4 +80,12 @@ public class KubernetesConfig {
     ProposalCreator proposalCreator(KubernetesClient client, MedicProperties props) {
         return new ProposalCreator(client, props.kubernetes().namespace());
     }
+
+    @Bean
+    io.github.hhagenbuch.medic.diagnose.CaseProbe caseProbe(MedicProperties props) {
+        // In-cluster the Diagnoser can re-run the exported case against the live
+        // agent — the flakiness check that guards the required flag.
+        return new io.github.hhagenbuch.medic.diagnose.HttpCaseProbe(
+                props.kubernetes().probeUrlTemplate());
+    }
 }

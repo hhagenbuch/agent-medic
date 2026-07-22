@@ -24,7 +24,9 @@ public record MedicProperties(
 
     public record Kubernetes(
             @DefaultValue("false") boolean enabled,
-            @DefaultValue("agents") String namespace) {
+            @DefaultValue("agents") String namespace,
+            /* Chat endpoint of a live agent, %s = the recorded runtime.app — the flakiness probe target. */
+            @DefaultValue("http://%s:8080/api/chat") String probeUrlTemplate) {
     }
 
     public record Surgeon(

@@ -32,8 +32,12 @@ public class MedicProposalStatus {
         public String rationale;
         /** Unified diff, current vs proposed prompt. */
         public String promptDiff;
-        /** The second bar: did the incident's own regression case pass at the gate? */
-        public Boolean incidentCasePassed;
+        /**
+         * The second bar, from the gate's verdict: {@code Passed}, {@code Failed},
+         * or {@code AdvisoryFailed} (the case was advisory — flaky at export time —
+         * and its failure is surfaced rather than vetoing).
+         */
+        public String incidentCaseVerdict;
         /** null while in flight; then Promoted | RolledBack | Invalid. */
         public String outcome;
         /** Why (gate report tail, validation error, rejection reason). */
