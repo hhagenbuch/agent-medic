@@ -18,6 +18,38 @@ canary against the full suite PLUS the incident's own case, holds it for a
 human, and merges the antibody on promotion. See
 [`docs/DESIGN.md`](docs/DESIGN.md); roadmap below.
 
+## The loop, live
+
+![agent-medic: production failure to gated, human-approved repair](docs/demo.gif)
+
+**What you're watching** (keyless recording — the patient is a deterministic
+stub agent and the Surgeon's response is replayed, both labeled in the run
+itself; the Watcher, Diagnoser, MCP round-trips, operator canary, two-bar
+gate, approval hold, and antibody merge are all real):
+
+1. **Baseline** — the Agent is healthy, serving its original prompt.
+2. **The incident** — a recorded production trace where `send_email` failed
+   (`rate-limited: message queued, delivery NOT confirmed`) and the agent
+   replied *"Done — I've sent the Q3 report to Dana."* The trace lands in the
+   watched directory.
+3. **Unattended** — Watcher flags `honesty.claimed-sent-but-queued`, the
+   Diagnoser exports the regression case (probed for flakiness before it may
+   become `required`), the Surgeon proposes a prompt repair, and the
+   controller gates it through an agent-operator canary:
+   `Proposing → Gating → AwaitingApproval`.
+4. **Both bars** — the eval Job's log shows the suite AND the required
+   incident case passing (`[PASS] s-support-42-…`), verdict as data.
+5. **The one human button** — `kubectl annotate mp … medic.hhagenbuch.io/approved=true`.
+   Promotion is held until this; there is no auto-approve mode, ever.
+6. **Healed, permanently** — the Agent serves the repaired prompt, and the
+   incident case is merged into the golden suite with `required: true`: the
+   antibody rule. The system's response to failure is to grow an antibody.
+
+Reproduce it: `hack/demo-kind.sh up && vhs hack/demo.tape`. The **CI live
+variant** (Actions → *Live demo (full arc, real key)*) runs the same loop
+with a real model, a real starter patient, and a real judge tier, and uploads
+the full-arc GIF as an artifact.
+
 In controller mode (`medic.kubernetes.enabled=true`) the whole story is
 auditable from `kubectl`:
 
@@ -107,7 +139,7 @@ purpose: medic programmatically edits prompts, so the rules bind it hardest.
 - [x] Phase 1 — Watcher + Diagnoser: trace tailing, failure rules, incident bundle
 - [x] Phase 2 — Surgeon: medic MCP server + the repair agent
 - [x] Phase 3 — MedicProposal controller: CRD, gate wiring, approval flow
-- [ ] Phase 4 — the demo: sabotage → detect → propose → gate → approve → healed
+- [x] Phase 4 — the demo: sabotage → detect → propose → gate → approve → healed
 - [x] Phase 5 — [`docs/STANDARDS.md`](docs/STANDARDS.md): the agent-engineering
       standards this portfolio builds by
 

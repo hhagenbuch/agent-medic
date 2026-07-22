@@ -40,6 +40,15 @@ public class KubernetesConfig {
 
     @Bean
     LlmClient surgeonLlm(MedicProperties props) {
+        if (!props.surgeon().scriptFile().isBlank()) {
+            log.warn("############################################################");
+            log.warn("# Surgeon response REPLAYED for the keyless demo:");
+            log.warn("#   {}", props.surgeon().scriptFile());
+            log.warn("# No model is consulted. The CI live variant runs the real one.");
+            log.warn("############################################################");
+            return new io.github.hhagenbuch.medic.surgeon.ReplayLlmClient(
+                    java.nio.file.Path.of(props.surgeon().scriptFile()));
+        }
         if (props.surgeon().apiKey().isBlank()) {
             log.warn("medic.surgeon.api-key is not set — Surgeon attempts will fail and proposals "
                     + "will end NeedsHuman (degraded but honest)");

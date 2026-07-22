@@ -14,10 +14,10 @@ cd "$(dirname "$0")/.."
 
 : "${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY — the Surgeon and judge run for real in this e2e}"
 
-CLUSTER=agent-medic-e2e
+CLUSTER=${CLUSTER:-agent-medic-e2e}
 NS=agents
-OPERATOR_DIR=../agent-operator
-STARTER_DIR=../spring-ai-agent-starter
+OPERATOR_DIR=${OPERATOR_DIR:-../agent-operator}
+STARTER_DIR=${STARTER_DIR:-../spring-ai-agent-starter}
 STARTER_IMAGE=ghcr.io/hhagenbuch/spring-ai-agent-starter:0.3.0
 WORK=$(mktemp -d)
 TRACES="$WORK/traces"; BUNDLES="$WORK/incidents"
