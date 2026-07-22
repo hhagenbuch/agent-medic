@@ -18,7 +18,7 @@ cd "$(dirname "$0")/.."
 CLUSTER=agent-medic-demo
 NS=agents
 OPERATOR_DIR=${OPERATOR_DIR:-../agent-operator}
-EVALS_IMAGE=ghcr.io/hhagenbuch/agent-evals:0.2.0
+EVALS_IMAGE=ghcr.io/hhagenbuch/agent-evals:0.2.1
 DEMO=/tmp/medic-demo
 
 down() {
