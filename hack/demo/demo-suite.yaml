@@ -1,0 +1,10 @@
+# The permanent suite before the incident: one healthy case. The antibody
+# (the exported incident case) joins it on promotion.
+name: support-golden-cases
+target: http://support-agent:8080/api/chat
+cases:
+  - id: greeting
+    prompt: "hello"
+    assert:
+      - type: contains
+        value: "support-agent"

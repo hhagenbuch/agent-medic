@@ -31,6 +31,8 @@ public record MedicProperties(
 
     public record Surgeon(
             @DefaultValue("") String apiKey,
-            @DefaultValue("claude-sonnet-5") String model) {
+            @DefaultValue("claude-sonnet-5") String model,
+            /* Set ONLY for the keyless demo: replay the Surgeon's proposal from this file instead of a model. */
+            @DefaultValue("") String scriptFile) {
     }
 }

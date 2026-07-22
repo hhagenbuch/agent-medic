@@ -37,11 +37,39 @@ public final class MedicResources {
     }
 
     public static String promptVersionName(MedicProposal mp, int attempt) {
-        return mp.getMetadata().getName() + "-fix-a" + attempt;
+        return shortName(mp.getMetadata().getName()) + "-fix-a" + attempt;
     }
 
     public static String candidateConfigMapName(MedicProposal mp, int attempt) {
-        return mp.getMetadata().getName() + "-candidate-a" + attempt;
+        return shortName(mp.getMetadata().getName()) + "-candidate-a" + attempt;
+    }
+
+    /**
+     * Incident ids make good MedicProposal names but bad PromptVersion bases:
+     * the operator derives {@code <pv>-canary} as an {@code app} LABEL VALUE,
+     * and label values cap at 63 bytes — one long rule id and the canary apply
+     * is rejected. Cap the base at 34 chars (27 + a stable 6-hex-digit hash of
+     * the full name, so truncation cannot collide two incidents).
+     */
+    static String shortName(String name) {
+        if (name.length() <= 34) {
+            return name;
+        }
+        return name.substring(0, 27) + "-" + sha256Hex(name).substring(0, 6);
+    }
+
+    private static String sha256Hex(String raw) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : digest) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     /** Mirror of the operator's eval Job naming ({@code CanaryResources.evalJobName}). */

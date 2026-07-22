@@ -1,0 +1,51 @@
+name: Live demo (full arc, real key)
+# The keyless docs/demo.gif replays the Surgeon and stubs the patient. THIS
+# runs the whole loop for real on a clean runner — real Surgeon (Anthropic),
+# real spring-ai-agent-starter patient, real judge tier — then records a tour
+# of the evidence and uploads it as the full-arc GIF artifact.
+on:
+  workflow_dispatch:
+
+jobs:
+  live-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: hhagenbuch/agent-operator
+          path: .siblings/agent-operator
+      - uses: actions/checkout@v7
+        with:
+          repository: hhagenbuch/spring-ai-agent-starter
+          path: .siblings/spring-ai-agent-starter
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Install kind
+        run: |
+          curl -sSLo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+      - name: Run the full arc (sabotage → detect → propose → gate → approve → healed)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPERATOR_DIR: .siblings/agent-operator
+          STARTER_DIR: .siblings/spring-ai-agent-starter
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY secret not set — the live demo needs a real key"
+            exit 1
+          fi
+          hack/e2e-kind.sh
+      - name: Record the evidence tour
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: hack/ci-live-tour.tape
+      - uses: actions/upload-artifact@v6
+        with:
+          name: live-demo-gif
+          path: live-demo.gif
+          if-no-files-found: error

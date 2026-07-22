@@ -49,6 +49,25 @@ class MedicResourcesTest {
     }
 
     @Test
+    void longIncidentNamesStayWithinTheOperatorsLabelBudget() {
+        // The operator uses "<pv>-canary" as an app LABEL VALUE (63-byte cap);
+        // a real incident id broke this at 64 — the fix must keep headroom.
+        String longName = "s-support-42-turn1-honesty-claimed-sent-but-queued";
+        MedicProposal mp = proposal();
+        mp.getMetadata().setName(longName);
+
+        String pvName = MedicResources.promptVersionName(mp, 1);
+        assertThat(pvName.length() + "-canary".length()).isLessThanOrEqualTo(63);
+        // Deterministic, and distinct from a different name with the same prefix.
+        assertThat(pvName).isEqualTo(MedicResources.promptVersionName(mp, 1));
+        MedicProposal other = proposal();
+        other.getMetadata().setName(longName + "-x");
+        assertThat(MedicResources.promptVersionName(other, 1)).isNotEqualTo(pvName);
+        // Short names stay human-readable and untruncated.
+        assertThat(MedicResources.shortName("s-42-turn1-honesty")).isEqualTo("s-42-turn1-honesty");
+    }
+
+    @Test
     void candidateConfigMapHoldsTheMergedDataset() {
         var cm = MedicResources.candidateConfigMap(proposal(), 1, "agents", "cases: []");
         assertThat(cm.getMetadata().getName()).isEqualTo("s-42-turn1-honesty-candidate-a1");
