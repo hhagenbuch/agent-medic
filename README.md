@@ -8,11 +8,27 @@
 **The system's response to failure is to grow an antibody.** Every incident
 permanently hardens the eval suite — medic never deletes or weakens a case.
 
-**Status: Phase 2 — Surgeon.** Failing production traces become incident
-bundles (Watcher + Diagnoser), and the Surgeon — a repair agent running on
+**Status: Phase 3 — the loop is closed.** Failing production traces become
+incident bundles (Watcher + Diagnoser); the Surgeon — a repair agent on
 [spring-ai-agent-starter](https://github.com/hhagenbuch/spring-ai-agent-starter)'s
 `AgentLoop` — reads the evidence through a read-only MCP server and proposes a
-validated prompt repair. See [`docs/DESIGN.md`](docs/DESIGN.md); roadmap below.
+validated prompt repair; and the `MedicProposal` controller gates that repair
+through an [agent-operator](https://github.com/hhagenbuch/agent-operator)
+canary against the full suite PLUS the incident's own case, holds it for a
+human, and merges the antibody on promotion. See
+[`docs/DESIGN.md`](docs/DESIGN.md); roadmap below.
+
+In controller mode (`medic.kubernetes.enabled=true`) the whole story is
+auditable from `kubectl`:
+
+```sh
+kubectl get mp                        # PHASE: Proposing → Gating → AwaitingApproval → Promoted | NeedsHuman
+kubectl describe mp <incident>       # rationale, prompt diff, gate outcomes, per attempt
+kubectl annotate mp <incident> medic.hhagenbuch.io/approved=true   # the one human button
+```
+
+Try the full loop on kind: [`hack/e2e-kind.sh`](hack/e2e-kind.sh)
+(needs `ANTHROPIC_API_KEY` — the Surgeon and judge are real there).
 
 ## Try it (30 seconds, no API key)
 
@@ -86,7 +102,7 @@ are traced by blackbox and metered by
 - [x] Phase 0 — design ([`docs/DESIGN.md`](docs/DESIGN.md))
 - [x] Phase 1 — Watcher + Diagnoser: trace tailing, failure rules, incident bundle
 - [x] Phase 2 — Surgeon: medic MCP server + the repair agent
-- [ ] Phase 3 — MedicProposal controller: CRD, gate wiring, approval flow
+- [x] Phase 3 — MedicProposal controller: CRD, gate wiring, approval flow
 - [ ] Phase 4 — the demo: sabotage → detect → propose → gate → approve → healed
 - [ ] Phase 5 — `docs/STANDARDS.md`: the agent-engineering standards this
       portfolio builds by

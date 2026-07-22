@@ -21,6 +21,9 @@
         <java.version>25</java.version>
         <blackbox.version>v0.2.1</blackbox.version>
         <starter.version>v0.3.0</starter.version>
+        <!-- Aligned with agent-operator (the CRDs are the contract). -->
+        <josdk.version>4.9.7</josdk.version>
+        <fabric8.version>6.14.0</fabric8.version>
     </properties>
 
     <repositories>
@@ -54,6 +57,19 @@
             <artifactId>java-diff-utils</artifactId>
             <version>4.16</version>
         </dependency>
+        <!-- The MedicProposal controller (brings the fabric8 kubernetes-client). -->
+        <dependency>
+            <groupId>io.javaoperatorsdk</groupId>
+            <artifactId>operator-framework</artifactId>
+            <version>${josdk.version}</version>
+        </dependency>
+        <!-- CRD YAML generated from the Java model at compile time (operator repo pattern). -->
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>crd-generator-apt</artifactId>
+            <version>${fabric8.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -66,6 +82,42 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>io.fabric8</groupId>
+                            <artifactId>crd-generator-apt</artifactId>
+                            <version>${fabric8.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <!--
+              The runtime image uses an exploded classpath (classes + lib/*) rather
+              than the fat jar: the Surgeon spawns MedicMcpServer with
+              `java -cp <java.class.path>`, which only works when the classpath is
+              real directories/jars — nested BOOT-INF entries are not spawnable.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-runtime-deps</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
