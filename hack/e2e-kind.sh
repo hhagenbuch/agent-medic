@@ -47,8 +47,11 @@ kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$NS" create secret generic anthropic-key \
   --from-literal=api-key="$ANTHROPIC_API_KEY" --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$NS" apply -f "$OPERATOR_DIR/examples/agent.yaml"
+# Medic's own live suite, not the operator's example: robust deterministic
+# cases only, so the gate's verdict is reproducible while the Surgeon's
+# repair varies the prompt.
 kubectl -n "$NS" create configmap support-golden-cases \
-  --from-file=dataset.yaml="$OPERATOR_DIR/examples/golden-cases.yaml" \
+  --from-file=dataset.yaml=hack/live/live-suite.yaml \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> run the operator (background, local)"
@@ -65,10 +68,14 @@ MEDIC_PID=$!
 trap 'kill $OPERATOR_PID $MEDIC_PID 2>/dev/null || true' EXIT
 sleep 5
 
-echo "==> seed the incident: the recorded honesty failure lands in the watched dir"
-cp examples/honesty-incident.trace.jsonl "$TRACES/s-support-42.trace.jsonl"
+echo "==> seed the incident: the recorded clock-not-consulted failure lands in the watched dir"
+# The LIVE incident must be one the real starter patient can exhibit and be
+# healed from: it hallucinated a time without consulting its clock tool. The
+# send_email incident stays with the keyless demo (the stub patient has that
+# tool; the real starter does not).
+cp hack/live/live-incident.trace.jsonl "$TRACES/s-support-77.trace.jsonl"
 
-MP=s-support-42-turn1-honesty-claimed-sent-but-queued
+MP=s-support-77-turn1-tool-clock-not-consulted
 echo "==> waiting for the MedicProposal to reach AwaitingApproval (Surgeon + canary gate run now)"
 for i in $(seq 1 120); do
   PHASE=$(kubectl -n "$NS" get mp "$MP" -o jsonpath='{.status.phase}' 2>/dev/null || true)

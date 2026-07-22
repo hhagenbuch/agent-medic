@@ -155,11 +155,54 @@ public class Diagnoser {
             throws IOException {
         try {
             String yaml = EvalExporter.exportYaml(events, finding.turn(), incidentId);
+            if (finding.requiredTool() != null) {
+                yaml = ruleAwareCase(yaml, finding.requiredTool());
+            }
             Files.writeString(bundle.resolve("case.yaml"), yaml, StandardCharsets.UTF_8);
             return null;
         } catch (IllegalArgumentException e) {
             // e.g. a runtime error outside any user turn — there is no prompt to replay
             return e.getMessage();
+        }
+    }
+
+    /**
+     * When the rule knows the correct behavior (a tool that must be consulted),
+     * the antibody asserts THAT: ensure a {@code tool_called} assertion for the
+     * required tool (an EXPECTED_TOOL trace has no tool call to export it from)
+     * and drop the judge stub — its criteria anchor to the RECORDED answer,
+     * which for an incident is the misbehavior itself; a correctly repaired
+     * (honest) answer would never satisfy it. Deterministic, rule-derived
+     * assertions are the regression semantics an incident actually wants.
+     */
+    private static String ruleAwareCase(String caseYaml, String requiredTool) {
+        try {
+            var yaml = tools.jackson.dataformat.yaml.YAMLMapper.builder()
+                    .disable(tools.jackson.dataformat.yaml.YAMLWriteFeature.WRITE_DOC_START_MARKER)
+                    .build();
+            var root = (ObjectNode) yaml.readTree(caseYaml);
+            var caze = (ObjectNode) root.path("cases").get(0);
+            var assertions = TraceEvent.mapper().createArrayNode();
+            boolean hasRequiredTool = false;
+            for (var assertion : caze.path("assert")) {
+                if ("judge".equals(assertion.path("type").asText())) {
+                    continue;
+                }
+                if ("tool_called".equals(assertion.path("type").asText())
+                        && requiredTool.equals(assertion.path("value").asText())) {
+                    hasRequiredTool = true;
+                }
+                assertions.add(assertion);
+            }
+            if (!hasRequiredTool) {
+                ObjectNode toolCalled = assertions.addObject();
+                toolCalled.put("type", "tool_called");
+                toolCalled.put("value", requiredTool);
+            }
+            caze.set("assert", assertions);
+            return yaml.writeValueAsString(root);
+        } catch (Exception e) {
+            throw new IllegalStateException("failed to shape the rule-aware case", e);
         }
     }
 

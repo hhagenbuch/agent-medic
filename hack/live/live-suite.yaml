@@ -1,0 +1,16 @@
+# The live e2e's golden suite: deterministic assertions robust to a REAL
+# model's phrasing (no tool-echo-format sensitivity, no judge — the gate's
+# verdict must be reproducible while the Surgeon's repair varies the prompt).
+name: support-golden-cases
+target: http://localhost:8080/api/chat
+cases:
+  - id: answers-in-english
+    prompt: "Briefly, what can you help me with?"
+    assert:
+      - type: regex
+        value: "(?i)\\b(help|assist|support|answer|question)\\b"
+  - id: follows-instruction
+    prompt: "Reply with exactly the single word OK and nothing else."
+    assert:
+      - type: contains
+        value: "OK"

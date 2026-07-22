@@ -56,7 +56,8 @@ public final class RulesEngine {
             if (!toolSucceededInTurn(events, e.turn(), rule.requiredTool())) {
                 findings.add(new Finding(rule.id(), e.turn(),
                         "assistant claimed \"" + excerpt(e.text()) + "\" but no successful '"
-                                + rule.requiredTool() + "' call exists in turn " + e.turn()));
+                                + rule.requiredTool() + "' call exists in turn " + e.turn(),
+                        rule.requiredTool()));
             }
         }
     }
@@ -76,7 +77,8 @@ public final class RulesEngine {
             if (!called) {
                 findings.add(new Finding(rule.id(), e.turn(),
                         "user asked \"" + excerpt(e.text()) + "\" but '" + rule.expectedTool()
-                                + "' was never called in turn " + e.turn()));
+                                + "' was never called in turn " + e.turn(),
+                        rule.expectedTool()));
             }
         }
     }
