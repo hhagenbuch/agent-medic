@@ -1,0 +1,52 @@
+# Least privilege for the medic controller, namespace-scoped. Notably absent:
+# any write on Agents, Deployments, Services, or Secrets — medic's only levers
+# are MedicProposals (its own CRD), PromptVersions (create + annotate), and
+# ConfigMaps (candidate datasets + the antibody merge).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-medic
+  namespace: agents
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-medic
+  namespace: agents
+rules:
+  - apiGroups: ["medic.hhagenbuch.io"]
+    resources: [medicproposals, medicproposals/status]
+    verbs: [get, list, watch, create, update, patch]
+  - apiGroups: ["agents.hhagenbuch.io"]
+    resources: [promptversions]
+    verbs: [get, list, watch, create, patch]
+  - apiGroups: ["agents.hhagenbuch.io"]
+    resources: [agents]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [get, list, watch, create, update, patch]
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list, watch]
+  # Reading the eval Job's log (the incident-case check) goes through the pod.
+  - apiGroups: [""]
+    resources: [pods, pods/log]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-medic
+  namespace: agents
+subjects:
+  - kind: ServiceAccount
+    name: agent-medic
+    namespace: agents
+roleRef:
+  kind: Role
+  name: agent-medic
+  apiGroup: rbac.authorization.k8s.io

@@ -4,6 +4,8 @@ import io.github.hhagenbuch.medic.diagnose.Diagnoser;
 import io.github.hhagenbuch.medic.rules.RulesEngine;
 import io.github.hhagenbuch.medic.rules.RulesLoader;
 import io.github.hhagenbuch.medic.watch.TraceWatcher;
+import io.github.hhagenbuch.medic.watch.TraceWatcher.IncidentListener;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -23,7 +25,10 @@ public class MedicConfig {
     }
 
     @Bean
-    TraceWatcher traceWatcher(MedicProperties props, RulesEngine engine, Diagnoser diagnoser) {
-        return new TraceWatcher(props.watchDir(), engine, diagnoser);
+    TraceWatcher traceWatcher(MedicProperties props, RulesEngine engine, Diagnoser diagnoser,
+                              ObjectProvider<IncidentListener> listener) {
+        // In controller mode the listener is the ProposalCreator; file-only mode has none.
+        return new TraceWatcher(props.watchDir(), engine, diagnoser,
+                listener.getIfAvailable(() -> (bundle, finding, events) -> { }));
     }
 }

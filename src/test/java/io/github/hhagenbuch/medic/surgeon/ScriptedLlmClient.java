@@ -19,20 +19,20 @@ import java.util.List;
  * every message list it was shown — so a test can assert that real MCP tool
  * results actually reached "the model".
  */
-class ScriptedLlmClient implements LlmClient {
+public class ScriptedLlmClient implements LlmClient {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Deque<LlmResponse> script = new ArrayDeque<>();
-    final List<String> observedMessages = new ArrayList<>();
+    public final List<String> observedMessages = new ArrayList<>();
 
-    ScriptedLlmClient callsTool(String toolName) {
+    public ScriptedLlmClient callsTool(String toolName) {
         script.add(new LlmResponse("", List.of(new ToolCall("tu-" + script.size(), toolName,
                 MAPPER.createObjectNode())), toolUseContent(toolName), "tool_use"));
         return this;
     }
 
-    ScriptedLlmClient answers(String text) {
+    public ScriptedLlmClient answers(String text) {
         script.add(new LlmResponse(text, List.of(), textContent(text), "end_turn"));
         return this;
     }

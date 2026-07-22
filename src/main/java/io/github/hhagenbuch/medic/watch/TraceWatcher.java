@@ -32,15 +32,27 @@ public class TraceWatcher {
 
     private static final Logger log = LoggerFactory.getLogger(TraceWatcher.class);
 
+    /** Invoked once per NEWLY diagnosed incident (after its bundle is written). */
+    @FunctionalInterface
+    public interface IncidentListener {
+        void onIncident(Path bundle, Finding finding, List<TraceEvent> events);
+    }
+
     private final Path watchDir;
     private final RulesEngine engine;
     private final Diagnoser diagnoser;
+    private final IncidentListener listener;
     private final Map<Path, Long> seenSizes = new ConcurrentHashMap<>();
 
     public TraceWatcher(Path watchDir, RulesEngine engine, Diagnoser diagnoser) {
+        this(watchDir, engine, diagnoser, (bundle, finding, events) -> { });
+    }
+
+    public TraceWatcher(Path watchDir, RulesEngine engine, Diagnoser diagnoser, IncidentListener listener) {
         this.watchDir = watchDir;
         this.engine = engine;
         this.diagnoser = diagnoser;
+        this.listener = listener;
     }
 
     @Scheduled(fixedDelayString = "${medic.poll-millis:2000}")
@@ -77,7 +89,8 @@ public class TraceWatcher {
             return;
         }
         for (Finding finding : engine.evaluate(events)) {
-            diagnoser.diagnose(trace, events, finding);
+            diagnoser.diagnose(trace, events, finding)
+                    .ifPresent(bundle -> listener.onIncident(bundle, finding, events));
         }
         seenSizes.put(trace, size);
     }
