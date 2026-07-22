@@ -96,6 +96,15 @@ class MedicStateMachineTest {
     }
 
     @Test
+    void anAdvisoryCaseFailingHoldsWithTheWarningInsteadOfVetoing() {
+        // The autoimmune guard's runtime half: a flaky (advisory) case's failure
+        // is a fact for the human, not a veto for the machine.
+        assertThat(at(MedicPhase.GATING, RepairState.NONE, PvState.AWAITING_APPROVAL,
+                CaseVerdict.FAILED_ADVISORY, Approval.NONE, 0))
+                .isEqualTo(new Decision(Action.HOLD_FOR_HUMAN, MedicPhase.AWAITING_APPROVAL));
+    }
+
+    @Test
     void gateRollbackRecordsTheFailureAndReturnsToProposing() {
         assertThat(at(MedicPhase.GATING, RepairState.NONE, PvState.ROLLED_BACK,
                 CaseVerdict.UNKNOWN, Approval.NONE, 0))

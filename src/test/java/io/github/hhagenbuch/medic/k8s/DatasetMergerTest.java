@@ -35,7 +35,7 @@ class DatasetMergerTest {
 
     @Test
     void appendsTheIncidentCaseUnderItsIncidentId() throws Exception {
-        String merged = DatasetMerger.merge(SUITE, INCIDENT_CASE, "s-42-turn1-honesty");
+        String merged = DatasetMerger.merge(SUITE, INCIDENT_CASE, "s-42-turn1-honesty", true);
         JsonNode doc = YAML.readTree(merged);
 
         assertThat(doc.path("name").asText()).isEqualTo("support-suite");
@@ -47,21 +47,34 @@ class DatasetMergerTest {
     }
 
     @Test
+    void aStableIncidentBecomesARequiredCaseAFlakyOneStaysAdvisory() throws Exception {
+        JsonNode requiredCase = YAML.readTree(
+                        DatasetMerger.merge(SUITE, INCIDENT_CASE, "stable", true))
+                .path("cases").get(1);
+        assertThat(requiredCase.path("required").asBoolean()).isTrue();
+
+        JsonNode advisoryCase = YAML.readTree(
+                        DatasetMerger.merge(SUITE, INCIDENT_CASE, "flaky", false))
+                .path("cases").get(1);
+        assertThat(advisoryCase.has("required")).isFalse();
+    }
+
+    @Test
     void mergeIsIdempotentOnIdCollision() throws Exception {
-        String once = DatasetMerger.merge(SUITE, INCIDENT_CASE, "s-42-turn1-honesty");
-        String twice = DatasetMerger.merge(once, INCIDENT_CASE, "s-42-turn1-honesty");
+        String once = DatasetMerger.merge(SUITE, INCIDENT_CASE, "s-42-turn1-honesty", true);
+        String twice = DatasetMerger.merge(once, INCIDENT_CASE, "s-42-turn1-honesty", true);
         assertThat(YAML.readTree(twice).path("cases")).hasSize(2); // replaced, not duplicated
     }
 
     @Test
     void rejectsAnEmptyIncidentDocument() {
-        assertThatThrownBy(() -> DatasetMerger.merge(SUITE, "name: x\ncases: []", "id"))
+        assertThatThrownBy(() -> DatasetMerger.merge(SUITE, "name: x\ncases: []", "id", true))
                 .hasMessageContaining("no cases");
     }
 
     @Test
     void rejectsASuiteWithoutACasesList() {
-        assertThatThrownBy(() -> DatasetMerger.merge("name: broken", INCIDENT_CASE, "id"))
+        assertThatThrownBy(() -> DatasetMerger.merge("name: broken", INCIDENT_CASE, "id", true))
                 .hasMessageContaining("no 'cases' list");
     }
 }

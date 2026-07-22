@@ -153,9 +153,19 @@ Reconcile flow:
    operator's own design calls out, and races with humans editing the Agent.
 3. The gate must clear **two bars**: the operator's aggregate
    `minPassRate`, **and** the incident case itself must pass. An aggregate
-   0.9 can be met while the one case that started all this still fails —
-   medic parses the eval report and requires the incident case id
-   explicitly. (See §5, failure modes.)
+   0.9 can be met while the one case that started all this still fails.
+   Both bars are enforced natively by agent-evals (≥ 0.2.0): the merged
+   incident case carries `required: true` (when stable — see the autoimmune
+   guard, §5), so the eval Job itself exits 1 on it regardless of the
+   aggregate. Medic reads the outcome from the Job log's final
+   `VERDICT-JSON: {...}` line (schema `agent-evals/verdict/v1`) — the pod
+   log is the one channel the operator already exposes, needing no shared
+   volume, extra RBAC, or sidecar, and the tagged schema-versioned line
+   survives human-format drift that scraping `[PASS]` lines would not.
+   Fail-closed: a completed log with no verdict line, an unparseable
+   verdict, or a verdict without the incident case is a broken gate, never
+   a pass. Medic pins the gate's evals image via `evalGateOverride.image`
+   so the verdict contract is guaranteed present.
 4. **Pass → AwaitingApproval.** Promotion is held for a human. Approval is
    an annotation on the MedicProposal — `medic.hhagenbuch.io/approved: "true"`
    — applied by a person who has the trace, the diff, the rationale, and the
@@ -239,11 +249,20 @@ autonomous.
   reaches production; worst case is wasted canary compute.
 - **Fix passes the suite but not the incident case** → caught by the second
   bar (§3.4.3); the aggregate rate alone is explicitly not trusted.
-- **Flaky incident case** (nondeterministic repro) → the case fails attempt
-  after attempt regardless of prompt quality → NeedsHuman with both eval
-  reports attached, which is the correct outcome: a human should decide
-  whether the case is flaky or the behavior is truly broken. Flakiness is
-  surfaced, not suppressed.
+- **Flaky incident case — the autoimmune guard.** A required antibody is a
+  permanent veto over every future promotion; graft a flaky case in as
+  `required` and the immune system starts attacking healthy deploys at
+  random — an autoimmune disease. So the required flag must be EARNED at
+  export time: the Diagnoser re-runs the fresh case 3× against the live
+  agent (deterministic assertions only). Stable failure (0/3 passes) →
+  `required` antibody. Anything flaky → the case is merged as ADVISORY
+  (gate may pass without it), the probe record lands in the incident
+  bundle, and an advisory failure at the gate is surfaced in the hold
+  message for the human to weigh — never auto-vetoed, never suppressed.
+  Probe unavailable (or file-only mode) → default `required`: the human
+  hold still protects the suite, and an unverifiable case blocking a
+  promotion is recoverable, while a flaky required antibody merged into
+  the permanent suite is not.
 - **Incident storm** (one bad deploy → hundreds of firing rules) → dedupe by
   `(agentRef, rule)` with an open-proposal cap of 1 per pair; subsequent
   incidents attach to the open MedicProposal as additional evidence instead

@@ -54,8 +54,8 @@ spec:
                   properties:
                     detail:
                       type: string
-                    incidentCasePassed:
-                      type: boolean
+                    incidentCaseVerdict:
+                      type: string
                     outcome:
                       type: string
                     promptDiff:

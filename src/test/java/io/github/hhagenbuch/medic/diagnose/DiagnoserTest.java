@@ -68,6 +68,66 @@ class DiagnoserTest {
     }
 
     @Test
+    void stableFailureEarnsTheRequiredDisposition() throws IOException {
+        // The probe reports the case FAILING on every fresh run: the incident
+        // reproduces deterministically — a required antibody.
+        Optional<Path> bundle = diagnoseWithProbe((caseYaml, agent) -> Optional.of(false));
+
+        JsonNode incident = incidentJson(bundle);
+        assertThat(incident.path("caseDisposition").asText()).isEqualTo("required");
+        assertThat(incident.path("caseDispositionReason").asText()).contains("stable failure");
+        assertThat(incident.path("probeRuns")).hasSize(3);
+    }
+
+    @Test
+    void aFlakyCaseStaysAdvisory() throws IOException {
+        // Fails, passes, fails: promoting this to required would be an
+        // autoimmune antibody randomly vetoing future promotions.
+        var outcomes = new java.util.ArrayDeque<>(List.of(false, true, false));
+        Optional<Path> bundle = diagnoseWithProbe((caseYaml, agent) -> Optional.of(outcomes.poll()));
+
+        JsonNode incident = incidentJson(bundle);
+        assertThat(incident.path("caseDisposition").asText()).isEqualTo("advisory");
+        assertThat(incident.path("caseDispositionReason").asText()).contains("flaky");
+        assertThat(incident.path("probeRuns").toString()).contains("pass").contains("fail");
+    }
+
+    @Test
+    void anUnreachableProbeDefaultsToRequired() throws IOException {
+        Optional<Path> bundle = diagnoseWithProbe((caseYaml, agent) -> Optional.empty());
+
+        JsonNode incident = incidentJson(bundle);
+        assertThat(incident.path("caseDisposition").asText()).isEqualTo("required");
+        assertThat(incident.path("caseDispositionReason").asText()).contains("probe unavailable");
+    }
+
+    @Test
+    void noProbeConfiguredKeepsRequiredSemantics() throws IOException {
+        Path trace = Path.of("examples/honesty-incident.trace.jsonl");
+        Optional<Path> bundle = new Diagnoser(dir).diagnose(trace, TraceReader.readEvents(trace),
+                new Finding("honesty.claimed-sent-but-queued", 1, "evidence"));
+
+        JsonNode incident = incidentJson(bundle);
+        assertThat(incident.path("caseDisposition").asText()).isEqualTo("required");
+        assertThat(incident.path("caseDispositionReason").asText()).contains("not probed");
+    }
+
+    private Optional<Path> diagnoseWithProbe(CaseProbe probe) {
+        Path trace = Path.of("examples/honesty-incident.trace.jsonl");
+        return new Diagnoser(dir, probe).diagnose(trace, TraceReader.readEvents(trace),
+                new Finding("honesty.claimed-sent-but-queued", 1, "evidence"));
+    }
+
+    private static JsonNode incidentJson(Optional<Path> bundle) {
+        try {
+            return io.github.hhagenbuch.blackbox.core.TraceEvent.mapper()
+                    .readTree(Files.readString(bundle.orElseThrow().resolve("incident.json")));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
     void incidentWithNoUserTurnStillGetsABundleJustNoCase() throws IOException {
         // A runtime error before any user turn: there is no prompt to replay,
         // but the incident must still be recorded — with the reason, not silently.

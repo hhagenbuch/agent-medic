@@ -75,9 +75,13 @@ public class MedicProposalReconciler implements Reconciler<MedicProposal> {
         PromptVersion pv = current != null && current.promptVersionRef != null
                 ? client.resources(PromptVersion.class).inNamespace(ns).withName(current.promptVersionRef).get()
                 : null;
-        CaseVerdict verdict = current == null || current.incidentCasePassed == null
+        CaseVerdict verdict = current == null || current.incidentCaseVerdict == null
                 ? CaseVerdict.UNKNOWN
-                : current.incidentCasePassed ? CaseVerdict.PASSED : CaseVerdict.FAILED;
+                : switch (current.incidentCaseVerdict) {
+                    case "Passed" -> CaseVerdict.PASSED;
+                    case "AdvisoryFailed" -> CaseVerdict.FAILED_ADVISORY;
+                    default -> CaseVerdict.FAILED;
+                };
 
         Decision decision = MedicStateMachine.decide(phase, repairState, pvState(pv), verdict,
                 approvalOf(mp), failedAttempts, mp.getSpec().maxAttempts);
@@ -86,7 +90,10 @@ public class MedicProposalReconciler implements Reconciler<MedicProposal> {
             case START_SURGEON -> startSurgeon(client, mp, ns, status, nextAttemptNo);
             case CREATE_GATE -> createGate(client, mp, ns, status, nextAttemptNo);
             case CHECK_INCIDENT_CASE -> checkIncidentCase(client, mp, ns, current);
-            case HOLD_FOR_HUMAN -> status.message = "gate passed, incident case included — approve with: "
+            case HOLD_FOR_HUMAN -> status.message = (verdict == CaseVerdict.FAILED_ADVISORY
+                    ? "gate passed, but the ADVISORY incident case failed (it was flaky at export "
+                    + "time — weigh it yourself) — approve with: "
+                    : "gate passed, incident case included — approve with: ")
                     + "kubectl annotate mp " + mp.getMetadata().getName() + " "
                     + MedicResources.MEDIC_APPROVED_ANNOTATION + "=true (or =false to reject)";
             case APPROVE_PV -> {
@@ -147,7 +154,7 @@ public class MedicProposalReconciler implements Reconciler<MedicProposal> {
         }
 
         String merged = DatasetMerger.merge(suiteCm.getData().get(DATASET_KEY), caseYaml,
-                mp.getSpec().incident.incidentId);
+                mp.getSpec().incident.incidentId, caseRequired(mp));
         client.resource(MedicResources.candidateConfigMap(mp, attemptNo, ns, merged)).serverSideApply();
         client.resource(MedicResources.promptVersion(mp, attemptNo, ns, repair.proposal().systemPrompt()))
                 .serverSideApply();
@@ -172,8 +179,11 @@ public class MedicProposalReconciler implements Reconciler<MedicProposal> {
             jobLog = null; // not readable this pass — verdict stays UNKNOWN, we re-check
         }
         CaseVerdict verdict = IncidentCaseCheck.verdict(jobLog, mp.getSpec().incident.incidentId);
-        if (verdict != CaseVerdict.UNKNOWN) {
-            current.incidentCasePassed = verdict == CaseVerdict.PASSED;
+        switch (verdict) {
+            case PASSED -> current.incidentCaseVerdict = "Passed";
+            case FAILED -> current.incidentCaseVerdict = "Failed";
+            case FAILED_ADVISORY -> current.incidentCaseVerdict = "AdvisoryFailed";
+            case UNKNOWN -> { /* log not readable yet — try again next pass */ }
         }
     }
 
@@ -215,7 +225,7 @@ public class MedicProposalReconciler implements Reconciler<MedicProposal> {
         String suiteCmName = agent.getSpec().evalGate.datasetConfigMap;
         ConfigMap suiteCm = client.configMaps().inNamespace(ns).withName(suiteCmName).get();
         String merged = DatasetMerger.merge(suiteCm.getData().get(DATASET_KEY), readCaseYaml(mp),
-                mp.getSpec().incident.incidentId);
+                mp.getSpec().incident.incidentId, caseRequired(mp));
         suiteCm.getData().put(DATASET_KEY, merged);
         if (suiteCm.getMetadata().getLabels() == null) {
             suiteCm.getMetadata().setLabels(new java.util.HashMap<>());
@@ -245,7 +255,7 @@ public class MedicProposalReconciler implements Reconciler<MedicProposal> {
             Attempt a = status.attempts.get(i);
             history.add(new SurgeonExecutor.HistoryEntry("attempt-" + (i + 1) + ".md",
                     "outcome: " + a.outcome
-                            + "\nincidentCasePassed: " + a.incidentCasePassed
+                            + "\nincidentCaseVerdict: " + a.incidentCaseVerdict
                             + "\ndetail: " + (a.detail == null ? "" : a.detail)
                             + "\nrationale of that attempt: " + (a.rationale == null ? "" : a.rationale)));
         }
@@ -258,6 +268,25 @@ public class MedicProposalReconciler implements Reconciler<MedicProposal> {
             return Files.isRegularFile(caseFile) ? Files.readString(caseFile) : null;
         } catch (IOException e) {
             return null;
+        }
+    }
+
+    /**
+     * The Diagnoser's export-time disposition: only a stable (probe-confirmed
+     * or unprobed) failure becomes a REQUIRED case; a flaky one stays advisory
+     * — the autoimmune guard. Missing/unreadable disposition defaults to
+     * required (fail-closed for the gate; the human hold still protects the
+     * suite).
+     */
+    private boolean caseRequired(MedicProposal mp) {
+        Path incidentJson = bundleRoot.resolve(mp.getSpec().incident.incidentId).resolve("incident.json");
+        try {
+            String disposition = io.github.hhagenbuch.blackbox.core.TraceEvent.mapper()
+                    .readTree(Files.readString(incidentJson))
+                    .path("caseDisposition").asText("required");
+            return !"advisory".equals(disposition);
+        } catch (Exception e) {
+            return true;
         }
     }
 

@@ -30,7 +30,13 @@ public final class DatasetMerger {
     private DatasetMerger() {
     }
 
-    public static String merge(String suiteYaml, String caseYaml, String incidentCaseId) {
+    /**
+     * @param required marks the merged case {@code required: true} — the gate
+     *                 then fails on it regardless of the aggregate. Stable
+     *                 (reproducible) incidents earn this; flaky ones stay
+     *                 advisory (the autoimmune guard, DESIGN.md §5).
+     */
+    public static String merge(String suiteYaml, String caseYaml, String incidentCaseId, boolean required) {
         ObjectNode suite = readObject(suiteYaml, "suite dataset");
         ObjectNode caseDoc = readObject(caseYaml, "incident case");
 
@@ -40,6 +46,9 @@ public final class DatasetMerger {
         }
         ObjectNode incidentCase = ((ObjectNode) incidentCases.get(0)).deepCopy();
         incidentCase.put("id", incidentCaseId);
+        if (required) {
+            incidentCase.put("required", true);
+        }
 
         JsonNode suiteCases = suite.path("cases");
         if (!suiteCases.isArray()) {

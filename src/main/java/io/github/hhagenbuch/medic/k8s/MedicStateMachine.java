@@ -64,9 +64,14 @@ public final class MedicStateMachine {
         NONE, IN_FLIGHT, AWAITING_APPROVAL, PROMOTED, ROLLED_BACK
     }
 
-    /** The second gate bar: the incident's own case at the eval gate. */
+    /**
+     * The second gate bar: the incident's own case at the eval gate, from the
+     * gate's machine-readable verdict. {@code FAILED_ADVISORY} = the case failed
+     * but was advisory (flaky at export time) — the gate legitimately passed
+     * without it, and the failure is surfaced to the human instead of vetoed.
+     */
     public enum CaseVerdict {
-        UNKNOWN, PASSED, FAILED
+        UNKNOWN, PASSED, FAILED, FAILED_ADVISORY
     }
 
     /** The {@code medic.hhagenbuch.io/approved} annotation on the MedicProposal. */
@@ -103,8 +108,14 @@ public final class MedicStateMachine {
                 case AWAITING_APPROVAL -> switch (incidentCase) {
                     case UNKNOWN -> new Decision(Action.CHECK_INCIDENT_CASE, MedicPhase.GATING);
                     case PASSED -> new Decision(Action.HOLD_FOR_HUMAN, MedicPhase.AWAITING_APPROVAL);
-                    // Aggregate bar met, incident bar not: this fix does not fix the incident.
+                    // Aggregate bar met, required incident bar not: broken gate or
+                    // non-fix — reject. (Normally unreachable: a required case
+                    // failing fails the eval Job itself.)
                     case FAILED -> new Decision(Action.REJECT_PV, MedicPhase.GATING);
+                    // Advisory case failed while the gate passed: the case was
+                    // flaky at export time, so a human weighs it — medic holds
+                    // with the warning instead of vetoing.
+                    case FAILED_ADVISORY -> new Decision(Action.HOLD_FOR_HUMAN, MedicPhase.AWAITING_APPROVAL);
                 };
                 case ROLLED_BACK -> new Decision(Action.RECORD_FAILURE, MedicPhase.PROPOSING);
                 // Defensive: requireApproval means the operator should never promote unbidden,

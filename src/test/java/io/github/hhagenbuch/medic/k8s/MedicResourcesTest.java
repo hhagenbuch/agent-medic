@@ -32,6 +32,8 @@ class MedicResourcesTest {
         assertThat(pv.getSpec().requireApproval).isTrue();
         assertThat(pv.getSpec().evalGateOverride.datasetConfigMap)
                 .isEqualTo("s-42-turn1-honesty-candidate-a1");
+        // The gate must run a verdict-emitting, required-enforcing evals.
+        assertThat(pv.getSpec().evalGateOverride.image).isEqualTo(MedicResources.EVALS_IMAGE);
         assertThat(pv.getSpec().evalGateOverride.minPassRate).isNull();
         assertThat(pv.getSpec().model).isNull();
     }

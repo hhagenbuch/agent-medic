@@ -25,6 +25,12 @@ public final class MedicResources {
     public static final String MANAGED_BY = "app.kubernetes.io/managed-by";
     public static final String AGENT_LABEL = "medic.hhagenbuch.io/agent";
     public static final String RULE_LABEL = "medic.hhagenbuch.io/rule";
+    /**
+     * The gate must run an agent-evals that emits the VERDICT-JSON log line and
+     * enforces {@code required} cases (≥ 0.2.0); medic pins it via the override
+     * rather than trusting whatever default the Agent or operator carries.
+     */
+    public static final String EVALS_IMAGE = "ghcr.io/hhagenbuch/agent-evals:0.2.0";
     private static final String DATASET_KEY = "dataset.yaml";
 
     private MedicResources() {
@@ -70,6 +76,7 @@ public final class MedicResources {
         spec.requireApproval = true;
         EvalGate override = new EvalGate();
         override.datasetConfigMap = candidateConfigMapName(mp, attempt);
+        override.image = EVALS_IMAGE;
         spec.evalGateOverride = override;
         pv.setSpec(spec);
         return pv;
